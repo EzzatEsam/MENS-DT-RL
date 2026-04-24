@@ -11,8 +11,7 @@ Ensure you are using Python 3.10+ in a virtual environment. We recommend using `
 ```bash
 # Setup the environment and install dependencies
 uv venv
-source .venv/bin/activate  # Or `.venv\Scripts\activate` on Windows
-uv add torch numpy gymnasium stable-baselines3
+uv sync
 ```
 
 ## Running the Training Algorithm
