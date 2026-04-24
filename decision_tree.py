@@ -11,8 +11,7 @@ MutationType = Literal[
     "Expand_leaf",
     "Reset_split",
     "Modify_threshold",
-    "Modify_leaf_discrete",
-    "Modify_leaf_continuous",
+    "Modify_leaf",
 ]
 
 
@@ -32,9 +31,11 @@ class DecisionTree:
         Creates a deep copy of the tree.
     mutate(mutation_type, *args, **kwargs)
         Applies a mutation operator to the tree's structure or parameters.
+    fit(states, actions, max_depth)
+        Trains the tree from scratch using CART principles (Gini/MSE) on the given data.
     """
 
-    def predict(self, state: ArrayLike) -> int:
+    def predict(self, state: ArrayLike) -> int | float | list[float]:
         """
         Predict the action to take given the current state.
 
@@ -47,6 +48,26 @@ class DecisionTree:
         -------
         int
             The action to be taken by the agent.
+        """
+        pass
+
+    def fit(self, states: list[ArrayLike], actions: list[int | float | list[float]], max_depth: int = None) -> "DecisionTree":
+        """
+        Train the decision tree from scratch using the provided dataset.
+
+        Parameters
+        ----------
+        states : list of ArrayLike
+            The observations collected from the environment.
+        actions : list of actions
+            The expert actions corresponding to the states.
+        max_depth : int, optional
+            The maximum depth to grow the tree.
+
+        Returns
+        -------
+        DecisionTree
+            The fitted tree (self).
         """
         pass
 

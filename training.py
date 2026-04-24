@@ -12,7 +12,7 @@ def train_mens_dt_rl(
     init_mode: str,
     *args,
     **kwargs,
-) -> DecisionTree:
+) -> tuple[DecisionTree, list[float], list[float]]:
     """
     Core implementation of the MENS-DT-RL algorithm.
 
@@ -36,14 +36,17 @@ def train_mens_dt_rl(
 
     Returns
     -------
-    DecisionTree
-        The best decision tree model found according to the fitness metric.
+    tuple of (DecisionTree, list[float], list[float])
+        The best decision tree model found, history of best scores, and history of average scores.
     """
 
     # 1. Initialization Phase
     population = initialize_population(
         mode=init_mode, pop_size=pop_size, env=env, *args, **kwargs
     )
+
+    best_scores = []
+    avg_scores = []
 
     # 2. Evolutionary Loop
     for generation in range(max_generations):
@@ -77,12 +80,17 @@ def train_mens_dt_rl(
         combined_candidates.sort(key=lambda x: x.get_fitness(), reverse=True)
         population = combined_candidates[:pop_size]
 
-        # Log progress
+        # Log progress and history
         current_best = population[0].get_fitness()
-        print(f"Generation {generation + 1}/{max_generations} - Best Fitness: {current_best:.4f}")
+        avg_fitness = sum(t.get_fitness() for t in population) / pop_size
+        
+        best_scores.append(current_best)
+        avg_scores.append(avg_fitness)
+        
+        print(f"Generation {generation + 1}/{max_generations} - Best Fitness: {current_best:.4f} | Avg Fitness: {avg_fitness:.4f}")
 
-    # 6. Return best solution
-    return population[0]
+    # 6. Return best solution and history
+    return population[0], best_scores, avg_scores
 
 
 def reward_pruning(
