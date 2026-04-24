@@ -12,6 +12,16 @@ Tick a box when the function body is complete, tested, and passes a quick sanity
 > **Files:** `decision_tree.py`  
 > **Theme:** Own the tree data structure and every genetic operator that transforms it.
 
+### 📖 Paper Sections to Read
+
+| Section | Title | Why It Matters |
+|---------|-------|----------------|
+| §3 (opening) | *Solution Representation* | Defines the univariate DT structure — feature index, threshold, and action leaf format |
+| §3, Fig. 3 | *Operators* | The canonical diagram of all 7 mutation operators; your ground truth for each `mutate` sub-case |
+| §3 | *Attribute Normalization* | Explains the `[-1, 1]` normalization that governs threshold ranges in `Reset_split` and `Modify_threshold` |
+| §3 | *MENS-DT-RL (R) initialization* | Describes the random tree depth and structure used in `generate_random_tree` |
+| §4.1 (all envs) | *Environments* | Gives state/action space dimensions for CartPole, MountainCar, LunarLander, and MaizeFertilization — needed to know your `action_space` range |
+
 ### Phase 1 — Tree Internals
 
 - [ ] **`DecisionTree.__init__`** — Define the node structure (inner nodes store `feature_index`, `threshold`; leaves store `action`). Support both discrete and continuous action spaces.
@@ -41,6 +51,17 @@ Tick a box when the function body is complete, tested, and passes a quick sanity
 > **Files:** `evaluation.py` · `expert_model.py`  
 > **Theme:** Own everything related to measuring how good a tree is and providing the black-box expert.
 
+### 📖 Paper Sections to Read
+
+| Section | Title | Why It Matters |
+|---------|-------|----------------|
+| §3 | *Fitness* (Equation 1) | The exact formula you must implement: `mean(G) − std(G) − α·‖M‖` |
+| §3 | *Attribute Normalization* | You apply the normalization inside `simulate_episode`; understand what gets clipped and what does not |
+| §3, Algorithm 1 | *Reward Pruning — SR(·)* | Defines the success-rate helper `SR(·)` that you must expose for Member C |
+| §4.1 (all envs) | *Environments — success thresholds* | Each environment has a different reward threshold for a "successful" episode (e.g., ≥ 495 for CartPole) |
+| §4.5, Table 1 | *Parameters* | Lists the `α` values used per environment — validates your fitness calculation under different regularization strengths |
+| §2.1 | *Reinforcement Learning* | Quick primer on cumulative undiscounted reward `G(M, i)` and why we use it instead of discounted return |
+
 ### Phase 1 — Episode Simulation
 
 - [ ] **`simulate_episode(tree, env)`** — Run one full gymnasium episode using the tree as the policy. Apply attribute normalization (clip known-bounded features to `[-1, 1]`) at each timestep. Return the total undiscounted reward `G(M, i)`.
@@ -62,6 +83,18 @@ Tick a box when the function body is complete, tested, and passes a quick sanity
 ## 👤 Member C — Imitation Learning, Reward Pruning & Training Loop
 > **Files:** `imitation.py` · `training.py`  
 > **Theme:** Own the DAgger pipeline, the Reward Pruning algorithm (Algorithm 1), and the top-level evolutionary loop.
+
+### 📖 Paper Sections to Read
+
+| Section | Title | Why It Matters |
+|---------|-------|----------------|
+| §2.1.1 | *Imitation Learning & DAgger* | Full description of the DAgger loop — dataset aggregation, covariate shift, and the iterative fitting procedure |
+| §3 | *IL Initialization* | Explains the CART regularization elbow-method heuristic used to size the imitation tree before adding it to the population |
+| §3, Algorithm 1 | *Reward Pruning* | The complete pseudocode for the bottom-up pruning passes you must implement faithfully |
+| §3 | *Pruning Initialization* | Explains the two-test acceptance rule: accept if `fitness(M') ≥ fitness(M)` **or** `SR(M') ≥ SR(M)` |
+| §3 (opening) | *Multi-method Ensemble / CRO-SL overview* | The evolutionary loop structure (initialization → mutation → evaluation → selection) that `train_mens_dt_rl` must follow |
+| §2.2 | *CRO-SL Background* | Conceptual background on the multi-method ensemble; clarifies the competitive-replacement selection strategy |
+| §4.2.3 | *Lunar Lander Results* | Shows why pruning initialization matters so much — MENS-DT-RL (R) completely fails without a good starting point |
 
 ### Phase 1 — DAgger Imitation Learning
 
