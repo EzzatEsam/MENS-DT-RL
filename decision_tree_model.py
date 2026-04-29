@@ -426,7 +426,7 @@ def generate_random_tree(
     )
 
 
-def initialize_population(
+def initialize_random_population(
     mode: str, pop_size: int, env: Env, max_depth: int, *args, **kwargs
 ) -> list[DecisionTreeModel]:
     """

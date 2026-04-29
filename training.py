@@ -1,4 +1,4 @@
-from decision_tree_model import DecisionTreeModel, initialize_population
+from decision_tree_model import DecisionTreeModel, initialize_random_population
 from evaluation import evaluate_tree_performance, calculate_fitness
 from gymnasium import Env
 
@@ -41,10 +41,7 @@ def train_mens_dt_rl(
     """
 
     # 1. Initialization Phase
-    population = initialize_population(
-        mode=init_mode, pop_size=pop_size, env=env, *args, **kwargs
-    )
-
+    population = ...
     best_scores = []
     avg_scores = []
 
