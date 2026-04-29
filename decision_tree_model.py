@@ -1,12 +1,15 @@
 from copy import deepcopy
+import random
 
 from gymnasium import Env
+import gymnasium as gym
+import numpy as np
 from numpy.typing import ArrayLike
 
 
-from typing import Literal
+from typing import Literal, TypedDict
 
-from tree_node import TreeNode
+from tree_node import DecisionNode, LeafNode, TreeNode
 
 MutationType = Literal[
     "Replace_with_child",
@@ -39,11 +42,94 @@ class DecisionTreeModel:
         Trains the tree from scratch using CART principles (Gini/MSE) on the given data.
     """
 
-    def __init__(self):
-        self.root: TreeNode = None
-        self.fitness: float = None
+    class NodeInfo(TypedDict):
+        node: DecisionNode | LeafNode
+        parent: DecisionNode | None
+        type: Literal["leaf", "decision"]
+        relation: Literal["root", "left", "right"]
 
-    def predict(self, state: ArrayLike) -> int | float | list[float]:
+    def __init__(
+        self,
+        root: TreeNode,
+        is_discrete: bool,
+        input_dim: int,
+        output_classes: int = None,
+        output_range: tuple[float, float] = None,
+    ):
+        self.root: TreeNode = root
+        self.fitness: float = np.nan
+        self.is_discrete: bool = is_discrete
+        self.input_dim: int = input_dim
+        self.output_classes: int = output_classes
+        self.output_range: tuple[float, float] = output_range
+        self._create_nodes_map()
+
+    def _create_nodes_map(self):
+        nodes: list[DecisionTreeModel.NodeInfo] = []
+
+        def traverse(node, parent=None):
+            if parent is not None:
+                if node is parent.left_child:
+                    relation = "left"
+                elif node is parent.right_child:
+                    relation = "right"
+                else:
+                    relation = "unknown"
+            else:
+                relation = "root"
+            if isinstance(node, LeafNode):
+                nodes.append(
+                    {
+                        "node": node,
+                        "parent": parent,
+                        "type": "leaf",
+                        "relation": relation,
+                    }
+                )
+            elif isinstance(node, DecisionNode):
+                nodes.append(
+                    {
+                        "node": node,
+                        "parent": parent,
+                        "type": "decision",
+                        "relation": relation,
+                    }
+                )
+                traverse(node.left_child, parent=node)
+                traverse(node.right_child, parent=node)
+
+        traverse(self.root)
+        self.nodes_map = nodes
+
+    def _get_random_node(
+        self, node_type: str | set[str], filter_root: bool = False
+    ) -> NodeInfo | None:
+        if isinstance(node_type, str):
+            candidates = [n for n in self.nodes_map if n["type"] == node_type]
+        else:
+            candidates = [n for n in self.nodes_map if n["type"] in node_type]
+        if filter_root:
+            candidates = [n for n in candidates if n["relation"] != "root"]
+        return random.choice(candidates) if candidates else None
+
+    def _get_random_output_value(self) -> int | float:
+        if self.is_discrete:
+            return np.random.randint(self.output_classes)
+        else:
+            low, high = self.output_range
+            return np.random.uniform(low, high)
+
+    def _swap_node_in_tree(self, node: NodeInfo, new_node: TreeNode) -> None:
+        parent = node["parent"]
+        relation = node["relation"]
+        if relation == "left":
+            parent.left_child = new_node
+        elif relation == "right":
+            parent.right_child = new_node
+        elif relation == "root":
+            self.root = new_node
+
+    def predict(self, state: ArrayLike) -> int | float:
         """
         Predict the action to take given the current state.
 
@@ -54,18 +140,21 @@ class DecisionTreeModel:
 
         Returns
         -------
-        int
+        int | float
             The action to be taken by the agent.
         """
-        if self.root is None:
-            raise ValueError("Tree is not fitted.")
         return self.root.predict(state)
 
+    @classmethod
     def fit(
-        self,
+        cls,
         states: list[ArrayLike],
-        actions: list[int | float | list[float]],
+        actions: list[int | float],
+        is_discrete: bool,
+        input_dim: int,
         max_depth: int = None,
+        output_classes: int = None,
+        output_range: tuple[float, float] = None,
     ) -> "DecisionTreeModel":
         """
         Train the decision tree from scratch using the provided dataset.
@@ -78,6 +167,14 @@ class DecisionTreeModel:
             The expert actions corresponding to the states.
         max_depth : int, optional
             The maximum depth to grow the tree.
+        is_discrete : bool
+            Whether the output is discrete.
+        input_dim : int
+            The dimensionality of the input features.
+        output_classes : int, optional
+            The number of classes for discrete outputs.
+        output_range : tuple of float, optional
+            The range of values for continuous outputs.
 
         Returns
         -------
@@ -121,7 +218,90 @@ class DecisionTreeModel:
         DecisionTree
             The mutated tree (or a new instance if modified in a non-in-place manner).
         """
-        pass
+        match mutation_type:
+            case "Replace_with_child":
+                # Select a random node and replace it with one of its children.
+                # If the selected node is the root, replace the entire tree with one of its children.
+                random_des_node = self._get_random_node("decision", filter_root=False)
+                p = np.random.rand()
+                if p < 0.5:
+                    new_child = random_des_node["node"].left_child
+                else:
+                    new_child = random_des_node["node"].right_child
+
+                self._swap_node_in_tree(random_des_node, new_child)
+            case "Reset_split":
+                # Select a random decision node and reset its split parameters to new random values.
+                random_des_node = self._get_random_node("decision", filter_root=False)
+                random_des_node["node"].attribute_index = np.random.randint(
+                    self.input_dim
+                )
+                random_des_node["node"].threshold = np.random.uniform(-1, 1)
+
+            case "Truncate":
+                # Select a random decision node and replace it with a leaf node.
+                random_des_node = self._get_random_node("decision", filter_root=False)
+                new_leaf = LeafNode(action=self._get_random_output_value())
+                self._swap_node_in_tree(random_des_node, new_leaf)
+            case "Modify_threshold":
+                # Select a random decision node and modify its threshold by adding a small random perturbation.
+                random_des_node = self._get_random_node("decision", filter_root=False)
+                perturbation = np.random.normal(loc=0.0, scale=0.1)
+                random_des_node["node"].threshold += perturbation
+                # Ensure the threshold remains within the normalized range [-1, 1].
+                random_des_node["node"].threshold = np.clip(
+                    random_des_node["node"].threshold, -1, 1
+                )
+            case "Insert_inner_node":
+                # Insert a new random decision node above a randomly selected node (which becomes one of its children).
+                # The other child of the new decision node is a new random leaf node.
+                random_node = self._get_random_node(
+                    {"decision", "leaf"}, filter_root=False
+                )
+                rand_attribute_index = np.random.randint(self.input_dim)
+                rand_threshold = np.random.uniform(-1, 1)
+
+                p = np.random.rand()
+                if p < 0.5:
+                    new_decision_node = DecisionNode(
+                        attribute_index=rand_attribute_index,
+                        threshold=rand_threshold,
+                        left_child=random_node["node"],
+                        right_child=LeafNode(action=self._get_random_output_value()),
+                    )
+                else:
+                    new_decision_node = DecisionNode(
+                        attribute_index=rand_attribute_index,
+                        threshold=rand_threshold,
+                        left_child=LeafNode(action=self._get_random_output_value()),
+                        right_child=random_node["node"],
+                    )
+
+                self._swap_node_in_tree(random_node, new_decision_node)
+            case "Expand_leaf":
+                # Select a random leaf node and replace it with a new decision node that splits on a random attribute and threshold.
+                # The two children of the new decision node are new random leaf nodes.
+                random_leaf_node = self._get_random_node("leaf", filter_root=False)
+                rand_attribute_index = np.random.randint(self.input_dim)
+                rand_threshold = np.random.uniform(-1, 1)
+
+                new_decision_node = DecisionNode(
+                    attribute_index=rand_attribute_index,
+                    threshold=rand_threshold,
+                    left_child=LeafNode(action=self._get_random_output_value()),
+                    right_child=LeafNode(action=self._get_random_output_value()),
+                )
+
+                self._swap_node_in_tree(random_leaf_node, new_decision_node)
+            case "Modify_leaf":
+                # Select a random leaf node and modify its action to a new random value.
+                random_leaf_node = self._get_random_node("leaf", filter_root=False)
+                random_leaf_node["node"].action = self._get_random_output_value()
+            case _:
+                raise ValueError(f"Unsupported mutation type: {mutation_type}")
+
+        self._create_nodes_map()  # Rebuild the nodes map after mutation to reflect changes.
+        return self
 
     def get_size(self) -> int:
         """
@@ -160,7 +340,14 @@ class DecisionTreeModel:
 
 
 def generate_random_tree(
-    max_depth: int, state_space: int, action_space: int, *args, **kwargs
+    max_depth: int,
+    state_space: int,
+    is_discrete: bool,
+    output_classes: int = None,
+    output_range: tuple[float, float] = None,
+    early_stop_prob: float = 0.2,
+    *args,
+    **kwargs,
 ) -> DecisionTreeModel:
     """
     Generates a random valid decision tree.
@@ -171,8 +358,14 @@ def generate_random_tree(
         The maximum depth of the tree.
     state_space : int
         The size of the state space.
-    action_space : int
-        The size of the action space.
+    is_discrete : bool
+        Whether the output is discrete.
+    output_classes : int, optional
+        The number of classes for discrete outputs.
+    output_range : tuple of float, optional
+        The range of values for continuous outputs.
+    early_stop_prob : float, optional
+        The probability of early stopping to create variability in tree sizes.
     *args : tuple
         Positional arguments for the tree.
     **kwargs : dict
@@ -180,14 +373,61 @@ def generate_random_tree(
 
     Returns
     -------
-    DecisionTree
-        A new instance of DecisionTree with the same structure and parameters.
+    DecisionTreeModel
+        A new instance of DecisionTreeModel with the same structure and parameters.
     """
-    pass
+
+    def _get_random_action() -> int | float:
+        """Helper to generate a random action based on the environment type."""
+        if is_discrete:
+            return np.random.randint(output_classes)
+        else:
+            low, high = output_range
+            return np.random.uniform(low, high)
+
+    def _build_tree(current_depth: int):
+        """Recursively builds the tree structure."""
+        # 1. Base Case: Reached maximum depth, must cap with a leaf.
+        if current_depth >= max_depth:
+            return LeafNode(action=_get_random_action())
+
+        # 2. Early Stopping: Give it a chance (e.g., 20%) to randomly stop growing
+        # and become a leaf, ensuring trees aren't all uniform in size.
+        # We ensure depth > 0 so the root isn't immediately a leaf.
+        if current_depth > 0 and np.random.rand() < early_stop_prob:
+            return LeafNode(action=_get_random_action())
+
+        # 3. Create Inner Rule (Decision Node)
+        # Select a random feature index
+        rand_attribute_index = np.random.randint(state_space)
+        # Select a random threshold in [-1, 1] (assuming inputs are normalized)
+        rand_threshold = np.random.uniform(-1.0, 1.0)
+
+        # Recursively build left and right subtrees
+        left = _build_tree(current_depth + 1)
+        right = _build_tree(current_depth + 1)
+
+        return DecisionNode(
+            attribute_index=rand_attribute_index,
+            threshold=rand_threshold,
+            left_child=left,
+            right_child=right,
+        )
+
+    # Kick off the recursive generation starting at depth 0
+    root = _build_tree(0)
+
+    return DecisionTreeModel(
+        root=root,
+        is_discrete=is_discrete,
+        input_dim=state_space,
+        output_classes=output_classes,
+        output_range=output_range,
+    )
 
 
 def initialize_population(
-    mode: str, pop_size: int, env: Env, *args, **kwargs
+    mode: str, pop_size: int, env: Env, max_depth: int, *args, **kwargs
 ) -> list[DecisionTreeModel]:
     """
     Orchestrate the chosen initialization mode for the population.
@@ -210,7 +450,25 @@ def initialize_population(
 
     Returns
     -------
-    list of DecisionTree
+    list of DecisionTreeModel
         The initialized population of decision trees.
     """
-    pass
+    is_discrete = isinstance(env.action_space, gym.spaces.Discrete)
+    input_dim = env.observation_space.shape[0]
+    output_classes = env.action_space.n if is_discrete else None
+    output_range = env.action_space.low[0], (
+        env.action_space.high[0] if not is_discrete else None
+    )
+
+    return [
+        generate_random_tree(
+            max_depth=max_depth,
+            state_space=input_dim,
+            is_discrete=is_discrete,
+            output_classes=output_classes,
+            output_range=output_range,
+            *args,
+            **kwargs,
+        )
+        for _ in range(pop_size)
+    ]
