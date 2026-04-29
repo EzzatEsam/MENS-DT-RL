@@ -37,6 +37,21 @@ This executes **Algorithm 1**, actively pruning the Imitation Learning tree dire
 python main.py --env LunarLander-v2 --init_mode P --expert_path "models/expert_lunarlander.zip" --alpha 0.05
 ```
 
+## Testing and Rendering
+
+Once you have a saved model (either an evolved tree or a deep expert), you can run it in "inference mode" with visual rendering to observe its behavior.
+
+### 1. Test a Saved Decision Tree
+This will load a pickled tree, apply the required Attribute Normalization, and render the environment:
+```bash
+python main.py --test --env CartPole-v1 --model_path "results/CartPole-v1_P_20260429_tree.pkl" --model_type tree
+```
+
+### 2. Test a Deep Expert Model
+```bash
+python main.py --test --env LunarLander-v2 --model_path "models/expert_lunarlander.zip" --model_type expert
+```
+
 ## Algorithm Parameters
 
 | Parameter | Type | Default | Description |
@@ -50,7 +65,16 @@ python main.py --env LunarLander-v2 --init_mode P --expert_path "models/expert_l
 | `--pop_size` | int | `50` | The number of competing trees per generation. |
 | `--max_generations` | int | `100` | Evolutionary stopping condition. |
 | `--n_episodes` | int | `100` | RL evaluation accuracy baseline. |
-| `--alpha` | float | `0.01` | Reguralization weight punishing bloated trees. |
+| `--alpha` | float | `0.01` | Regularization weight punishing bloated trees. |
+| `--test` | flag | `False` | Run the specified model in inference mode with rendering. |
+| `--model_path` | str | `None` | Path to the model file to test (required for `--test`). |
+| `--model_type` | str | `tree` | Type of model being tested: `tree` or `expert`. |
+
+## Core Components
+
+- **`normalizer.py`**: Contains the `ObservationNormalizer` class which handles the paper's Attribute Normalization procedure (§3). It scales finite-bounded observations to `[-1, 1]` and supports both single observations and batch processing.
+- **`evaluation.py`**: Handles simulation episodes, fitness calculation (Equation 1), and success rate metrics.
+- **`decision_tree_model.py`**: The underlying mutable decision tree architecture.
 
 ## Development Tasks
 

@@ -92,6 +92,21 @@ def parse_arguments():
         help="Weight of the tree size penalty in the fitness calculation",
     )
 
+    # Testing / Inference Settings
+    parser.add_argument(
+        "--test", action="store_true", help="Run a saved model in inference mode"
+    )
+    parser.add_argument(
+        "--model_path", type=str, default=None, help="Path to the model to test"
+    )
+    parser.add_argument(
+        "--model_type",
+        type=str,
+        choices=["tree", "expert"],
+        default="tree",
+        help="Type of model to test: 'tree' (pickled DecisionTreeModel) or 'expert' (deep model)",
+    )
+
     return parser.parse_args()
 
 
@@ -158,6 +173,46 @@ def main():
     torch.manual_seed(args.seed)
 
     # 3. Initialize the Reinforcement Learning Environment
+    if args.test:
+        if not args.model_path:
+            print("Error: --test mode requires --model_path to be specified.")
+            return
+
+        env = gym.make(args.env, render_mode="human")
+        print(f"\n[Test Mode] Environment '{args.env}' successfully loaded with render_mode='human'.")
+
+        if args.model_type == "tree":
+            with open(args.model_path, "rb") as f:
+                model = pickle.load(f)
+            print(f"Loaded Decision Tree from {args.model_path}")
+
+            from evaluation import simulate_episode
+            print(f"Running 5 test episodes...")
+            for i in range(5):
+                reward = simulate_episode(model, env, render=True)
+                print(f" Episode {i+1}: Reward = {reward}")
+        else:
+            # Expert model testing
+            from expert_model import load_expert_from_path
+            model = load_expert_from_path(args.model_path, env)
+            print(f"Loaded Expert Model from {args.model_path}")
+
+            print(f"Running 5 test episodes...")
+            for i in range(5):
+                obs, _ = env.reset()
+                total_reward = 0.0
+                done = False
+                while not done:
+                    env.render()
+                    action, _ = model.predict(obs)
+                    obs, reward, terminated, truncated, _ = env.step(action)
+                    total_reward += reward
+                    done = terminated or truncated
+                print(f" Episode {i+1}: Reward = {total_reward}")
+
+        env.close()
+        return
+
     env = gym.make(args.env)
     print(f"\n[1/4] Environment '{args.env}' successfully loaded.")
 

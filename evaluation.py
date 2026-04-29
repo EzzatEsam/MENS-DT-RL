@@ -5,7 +5,9 @@ from decision_tree_model import DecisionTreeModel
 from normalizer import ObservationNormalizer
 
 
-def simulate_episode(tree: DecisionTreeModel, env: Env) -> float:
+def simulate_episode(
+    tree: DecisionTreeModel, env: Env, render: bool = False
+) -> float:
     """
     Run a single episode in the environment using the provided Decision Tree.
 
@@ -20,6 +22,8 @@ def simulate_episode(tree: DecisionTreeModel, env: Env) -> float:
         The decision tree policy to use for selecting actions.
     env : Env
         The gymnasium environment to run the episode in.
+    render : bool, optional
+        Whether to render the environment during simulation. Default is False.
 
     Returns
     -------
@@ -34,6 +38,9 @@ def simulate_episode(tree: DecisionTreeModel, env: Env) -> float:
     normalizer = ObservationNormalizer(env.observation_space)
 
     while not (terminated or truncated):
+        if render:
+            env.render()
+
         obs_norm = normalizer.normalize(obs)
         action = tree.predict(obs_norm)
         obs, reward, terminated, truncated, _ = env.step(action)
