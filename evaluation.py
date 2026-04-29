@@ -1,6 +1,8 @@
 import numpy as np
-from decision_tree_model import DecisionTreeModel
 from gymnasium import Env
+
+from decision_tree_model import DecisionTreeModel
+from normalizer import ObservationNormalizer
 
 
 def simulate_episode(tree: DecisionTreeModel, env: Env) -> float:
@@ -14,7 +16,7 @@ def simulate_episode(tree: DecisionTreeModel, env: Env) -> float:
 
     Parameters
     ----------
-    tree : DecisionTree
+    tree : DecisionTreeModel
         The decision tree policy to use for selecting actions.
     env : Env
         The gymnasium environment to run the episode in.
@@ -29,25 +31,10 @@ def simulate_episode(tree: DecisionTreeModel, env: Env) -> float:
     terminated = False
     truncated = False
 
-    # Pre-compute per-attribute normalization bounds once per episode.
-    # Per §3: only normalize when both low and high are finite.
-    low = env.observation_space.low
-    high = env.observation_space.high
-    finite_mask = np.isfinite(low) & np.isfinite(high)
-    # Avoid division by zero for attributes where low == high (edge case).
-    range_ = np.where(finite_mask, high - low, 1.0)
-    range_ = np.where(range_ == 0.0, 1.0, range_)
+    normalizer = ObservationNormalizer(env.observation_space)
 
     while not (terminated or truncated):
-        # --- Attribute Normalization (§3) ---
-        obs_norm = obs.copy().astype(float)
-        obs_norm[finite_mask] = (
-            2.0 * (obs[finite_mask] - low[finite_mask]) / range_[finite_mask] - 1.0
-        )
-        # Clip normalized values strictly to [-1, 1] to guard against
-        # observations that slightly exceed declared bounds at runtime.
-        obs_norm[finite_mask] = np.clip(obs_norm[finite_mask], -1.0, 1.0)
-
+        obs_norm = normalizer.normalize(obs)
         action = tree.predict(obs_norm)
         obs, reward, terminated, truncated, _ = env.step(action)
         total_reward += reward
@@ -63,7 +50,7 @@ def evaluate_tree_performance(
 
     Parameters
     ----------
-    tree : DecisionTree
+    tree : DecisionTreeModel
         The decision tree policy to evaluate.
     env : Env
         The gymnasium environment to run simulations in.
