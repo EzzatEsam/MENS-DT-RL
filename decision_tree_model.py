@@ -5,7 +5,8 @@ from gymnasium import Env
 import gymnasium as gym
 import numpy as np
 from numpy.typing import ArrayLike
-
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from sklearn.tree._tree import Tree
 
 from typing import Literal, TypedDict
 
@@ -146,6 +147,47 @@ class DecisionTreeModel:
         return self.root.predict(state)
 
     @classmethod
+    def _build_tree_from_sklearn(cls, sklearn_tree) -> TreeNode:
+        def build_node(node_id: int) -> TreeNode:
+            # In scikit-learn, leaf nodes have left and right children set to -1
+            is_leaf = (
+                sklearn_tree.children_left[node_id]
+                == sklearn_tree.children_right[node_id]
+            )
+
+            if is_leaf:
+                # Extract the value array for this node
+                value_array = sklearn_tree.value[node_id][0]
+
+                # If the array has more than 1 element, it's a classification tree (discrete)
+                # and contains class frequencies. We take the argmax for the predicted class.
+                if len(value_array) > 1:
+                    action = int(np.argmax(value_array))
+                # Otherwise, it's a regression tree (continuous) with a single predicted value.
+                else:
+                    action = float(value_array[0])
+
+                return LeafNode(action=action)
+            else:
+                # It is a decision node
+                feature_idx = int(sklearn_tree.feature[node_id])
+                threshold = float(sklearn_tree.threshold[node_id])
+
+                # Recursively build the subtrees
+                left_child = build_node(sklearn_tree.children_left[node_id])
+                right_child = build_node(sklearn_tree.children_right[node_id])
+
+                return DecisionNode(
+                    attribute_index=feature_idx,
+                    threshold=threshold,
+                    left_child=left_child,
+                    right_child=right_child,
+                )
+
+        # Scikit-learn's root node is always initialized at index 0
+        return build_node(0)
+
+    @classmethod
     def fit(
         cls,
         states: list[ArrayLike],
@@ -165,12 +207,12 @@ class DecisionTreeModel:
             The observations collected from the environment.
         actions : list of actions
             The expert actions corresponding to the states.
-        max_depth : int, optional
-            The maximum depth to grow the tree.
         is_discrete : bool
             Whether the output is discrete.
         input_dim : int
             The dimensionality of the input features.
+        max_depth : int, optional
+            The maximum depth to grow the tree.
         output_classes : int, optional
             The number of classes for discrete outputs.
         output_range : tuple of float, optional
@@ -178,10 +220,27 @@ class DecisionTreeModel:
 
         Returns
         -------
-        DecisionTree
+        DecisionTreeModel
             The fitted tree (self).
         """
-        pass
+
+        if is_discrete:
+            clf = DecisionTreeClassifier(max_depth=max_depth)
+        else:
+            clf = DecisionTreeRegressor(max_depth=max_depth)
+
+        clf.fit(states, actions)
+
+        # Build our custom tree structure from the trained scikit-learn tree
+        root = cls._build_tree_from_sklearn(clf.tree_)
+
+        return cls(
+            root=root,
+            is_discrete=is_discrete,
+            input_dim=input_dim,
+            output_classes=output_classes,
+            output_range=output_range,
+        )
 
     def clone(self) -> "DecisionTreeModel":
         """
