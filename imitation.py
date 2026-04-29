@@ -1,11 +1,11 @@
 from gymnasium import Env
 import torch as T
-from decision_tree import DecisionTree
+from decision_tree_model import DecisionTreeModel
 
 
 def run_imitation(
-    expert_model: T.nn.Module, d_tree: DecisionTree, env: Env, n_episodes: int
-) -> DecisionTree:
+    expert_model: T.nn.Module, d_tree: DecisionTreeModel, env: Env, n_episodes: int
+) -> DecisionTreeModel:
     """
     Train a decision tree to imitate an expert model using Imitation Learning.
 
@@ -29,4 +29,3 @@ def run_imitation(
         The trained decision tree that imitates the expert.
     """
     pass
-

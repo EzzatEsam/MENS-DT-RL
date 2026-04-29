@@ -1,9 +1,9 @@
 import numpy as np
-from decision_tree import DecisionTree
+from decision_tree_model import DecisionTreeModel
 from gymnasium import Env
 
 
-def simulate_episode(tree: DecisionTree, env: Env) -> float:
+def simulate_episode(tree: DecisionTreeModel, env: Env) -> float:
     """
     Run a single episode in the environment using the provided Decision Tree.
 
@@ -56,7 +56,7 @@ def simulate_episode(tree: DecisionTree, env: Env) -> float:
 
 
 def evaluate_tree_performance(
-    tree: DecisionTree, env: Env, n_episodes: int
+    tree: DecisionTreeModel, env: Env, n_episodes: int
 ) -> list[float]:
     """
     Evaluate the tree's performance by running multiple simulation episodes.

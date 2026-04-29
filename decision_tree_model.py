@@ -1,8 +1,12 @@
+from copy import deepcopy
+
 from gymnasium import Env
 from numpy.typing import ArrayLike
 
 
 from typing import Literal
+
+from tree_node import TreeNode
 
 MutationType = Literal[
     "Replace_with_child",
@@ -15,7 +19,7 @@ MutationType = Literal[
 ]
 
 
-class DecisionTree:
+class DecisionTreeModel:
     """
     An interpretable univariate decision tree policy for reinforcement learning.
 
@@ -35,6 +39,10 @@ class DecisionTree:
         Trains the tree from scratch using CART principles (Gini/MSE) on the given data.
     """
 
+    def __init__(self):
+        self.root: TreeNode = None
+        self.fitness: float = None
+
     def predict(self, state: ArrayLike) -> int | float | list[float]:
         """
         Predict the action to take given the current state.
@@ -49,9 +57,16 @@ class DecisionTree:
         int
             The action to be taken by the agent.
         """
-        pass
+        if self.root is None:
+            raise ValueError("Tree is not fitted.")
+        return self.root.predict(state)
 
-    def fit(self, states: list[ArrayLike], actions: list[int | float | list[float]], max_depth: int = None) -> "DecisionTree":
+    def fit(
+        self,
+        states: list[ArrayLike],
+        actions: list[int | float | list[float]],
+        max_depth: int = None,
+    ) -> "DecisionTreeModel":
         """
         Train the decision tree from scratch using the provided dataset.
 
@@ -71,7 +86,7 @@ class DecisionTree:
         """
         pass
 
-    def clone(self) -> "DecisionTree":
+    def clone(self) -> "DecisionTreeModel":
         """
         Create a deep copy of the current Decision Tree.
 
@@ -80,9 +95,11 @@ class DecisionTree:
         DecisionTree
             A new instance of DecisionTree with the same structure and parameters.
         """
-        pass
+        return deepcopy(self)
 
-    def mutate(self, mutation_type: MutationType, *args, **kwargs) -> "DecisionTree":
+    def mutate(
+        self, mutation_type: MutationType, *args, **kwargs
+    ) -> "DecisionTreeModel":
         """
         Apply a mutation operator to the tree structure or parameters.
 
@@ -115,7 +132,7 @@ class DecisionTree:
         int
             The total number of nodes in the tree.
         """
-        pass
+        return 1 + self.root.get_n_children() if self.root else 0
 
     def set_fitness(self, fitness: float) -> None:
         """
@@ -144,7 +161,7 @@ class DecisionTree:
 
 def generate_random_tree(
     max_depth: int, state_space: int, action_space: int, *args, **kwargs
-) -> DecisionTree:
+) -> DecisionTreeModel:
     """
     Generates a random valid decision tree.
 
@@ -171,11 +188,11 @@ def generate_random_tree(
 
 def initialize_population(
     mode: str, pop_size: int, env: Env, *args, **kwargs
-) -> list[DecisionTree]:
+) -> list[DecisionTreeModel]:
     """
     Orchestrate the chosen initialization mode for the population.
 
-    Supports Random (R), Imitation Learning (IL), and Pruning-based (P) 
+    Supports Random (R), Imitation Learning (IL), and Pruning-based (P)
     initialization strategies as described in the MENS-DT-RL paper.
 
     Parameters

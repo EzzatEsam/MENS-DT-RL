@@ -1,4 +1,4 @@
-from decision_tree import DecisionTree, initialize_population
+from decision_tree_model import DecisionTreeModel, initialize_population
 from evaluation import evaluate_tree_performance, calculate_fitness
 from gymnasium import Env
 
@@ -12,7 +12,7 @@ def train_mens_dt_rl(
     init_mode: str,
     *args,
     **kwargs,
-) -> tuple[DecisionTree, list[float], list[float]]:
+) -> tuple[DecisionTreeModel, list[float], list[float]]:
     """
     Core implementation of the MENS-DT-RL algorithm.
 
@@ -83,24 +83,26 @@ def train_mens_dt_rl(
         # Log progress and history
         current_best = population[0].get_fitness()
         avg_fitness = sum(t.get_fitness() for t in population) / pop_size
-        
+
         best_scores.append(current_best)
         avg_scores.append(avg_fitness)
-        
-        print(f"Generation {generation + 1}/{max_generations} - Best Fitness: {current_best:.4f} | Avg Fitness: {avg_fitness:.4f}")
+
+        print(
+            f"Generation {generation + 1}/{max_generations} - Best Fitness: {current_best:.4f} | Avg Fitness: {avg_fitness:.4f}"
+        )
 
     # 6. Return best solution and history
     return population[0], best_scores, avg_scores
 
 
 def reward_pruning(
-    tree: DecisionTree, env: Env, old_score: float = None, *args, **kwargs
-) -> DecisionTree:
+    tree: DecisionTreeModel, env: Env, old_score: float = None, *args, **kwargs
+) -> DecisionTreeModel:
     """
     Implements the Reward Pruning algorithm (Algorithm 1 from the paper).
 
     This process iterates over the tree, attempting to prune branches. It checks
-    the environment for evaluation (simulating episodes) to verify if the 
+    the environment for evaluation (simulating episodes) to verify if the
     pruning operation maintains or improves the old_score (fitness or success rate).
 
     Parameters
