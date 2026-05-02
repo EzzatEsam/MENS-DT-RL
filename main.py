@@ -8,7 +8,10 @@ import pandas as pd
 import datetime
 import pickle
 import os
+import io
+from contextlib import redirect_stdout
 from training import train_mens_dt_rl
+from tree_node import print_tree, tree_to_mermaid
 
 
 def parse_arguments():
@@ -110,7 +113,16 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def save_results(best_tree, best_scores, avg_scores, base_path, env_name, init_mode):
+def save_results(
+    best_tree,
+    best_scores,
+    avg_scores,
+    base_path,
+    env_name,
+    init_mode,
+    action_names=None,
+    decimals: int = 3,
+):
     """
     Saves the execution results including CSV histories, plots, and
     the best decision tree pickled instance.
@@ -159,6 +171,28 @@ def save_results(best_tree, best_scores, avg_scores, base_path, env_name, init_m
     pkl_path = f"{base_path}_tree.pkl"
     with open(pkl_path, "wb") as f:
         pickle.dump(best_tree, f)
+
+    # 4. Save Tree Text
+    tree_text_path = f"{base_path}_tree.txt"
+    buffer = io.StringIO()
+    with redirect_stdout(buffer):
+        print_tree(best_tree.root, action_names=action_names, decimals=decimals)
+    with open(tree_text_path, "w", encoding="utf-8") as f:
+        f.write(buffer.getvalue())
+
+    # 5. Save Mermaid
+    mermaid_path = f"{base_path}_tree.mmd"
+    mermaid_text = tree_to_mermaid(
+        best_tree.root, action_names=action_names, decimals=decimals
+    )
+    with open(mermaid_path, "w", encoding="utf-8") as f:
+        f.write(mermaid_text)
+
+    mermaid_md_path = f"{base_path}_tree.md"
+    with open(mermaid_md_path, "w", encoding="utf-8") as f:
+        f.write("```mermaid\n")
+        f.write(mermaid_text)
+        f.write("\n```")
 
     return base_path
 
@@ -275,6 +309,9 @@ def main():
     print(f"      - History: {base_path}_history.csv")
     print(f"      - Plot:    {base_path}_plot.png")
     print(f"      - Tree:    {base_path}_tree.pkl")
+    print(f"      - Tree TXT:{base_path}_tree.txt")
+    print(f"      - Mermaid:{base_path}_tree.mmd")
+    print(f"      - Mermaid MD:{base_path}_tree.md")
 
     env.close()
 
