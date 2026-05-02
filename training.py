@@ -64,6 +64,9 @@ def train_mens_dt_rl(
     best_scores = []
     avg_scores = []
 
+    # Optional callback to save progress each generation
+    save_callback = kwargs.get("save_callback", None)
+
     # 2. Evolutionary Loop
     for generation in range(max_generations):
         new_population = []
@@ -132,6 +135,9 @@ def train_mens_dt_rl(
         print(
             f"Generation {generation + 1}/{max_generations} - Best Fitness: {current_best:.4f} | Avg Fitness: {avg_fitness:.4f}"
         )
+
+        if save_callback is not None:
+            save_callback(population[0], best_scores, avg_scores)
 
     # 6. Return best solution and history
     return population[0], best_scores, avg_scores
