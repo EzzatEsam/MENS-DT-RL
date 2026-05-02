@@ -515,10 +515,14 @@ def initialize_random_population(
     is_discrete = isinstance(env.action_space, gym.spaces.Discrete)
     input_dim = env.observation_space.shape[0]
     output_classes = env.action_space.n if is_discrete else None
-    output_range = env.action_space.low[0], (
-        env.action_space.high[0] if not is_discrete else None
-    )
+    # output_range = env.action_space.low[0], (
+    #     env.action_space.high[0] if not is_discrete else None
+    # )
 
+    if is_discrete:
+            output_range = None
+    else:
+            output_range = (env.action_space.low[0], env.action_space.high[0])
     return [
         generate_random_tree(
             max_depth=max_depth,
