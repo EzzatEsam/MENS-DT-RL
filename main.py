@@ -219,10 +219,6 @@ def main():
     # 4. Starting the training process
     print(f"[2/4] Initializing and training population using mode: {args.init_mode}...")
     
-    # Check for expert path if required
-    if args.init_mode in ["IL", "P"] and not args.expert_path:
-        print("Warning: Init mode IL/P requires --expert_path. Falling back to Random.")
-        args.init_mode = "R"
 
     best_tree, best_hist, avg_hist = train_mens_dt_rl(
         env=env,

@@ -251,7 +251,9 @@ class DecisionTreeModel:
         DecisionTree
             A new instance of DecisionTree with the same structure and parameters.
         """
-        return deepcopy(self)
+        other = deepcopy(self)
+        other.set_fitness(np.nan)  # Reset fitness for the cloned tree
+        return other
 
     def mutate(
         self, mutation_type: MutationType, *args, **kwargs
@@ -520,9 +522,9 @@ def initialize_random_population(
     # )
 
     if is_discrete:
-            output_range = None
+        output_range = None
     else:
-            output_range = (env.action_space.low[0], env.action_space.high[0])
+        output_range = (env.action_space.low[0], env.action_space.high[0])
     return [
         generate_random_tree(
             max_depth=max_depth,

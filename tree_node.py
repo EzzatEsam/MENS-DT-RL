@@ -50,3 +50,20 @@ class DecisionNode(TreeNode):
 
     def get_n_children(self):
         return 2 + self.left_child.get_n_children() + self.right_child.get_n_children()
+
+
+def print_tree(node: TreeNode, depth: int = 0, feature_names: list = None):
+    """
+    Prints the structure of the decision tree.
+    """
+    indent = "  " * depth
+    if isinstance(node, LeafNode):
+        print(f"{indent}Leaf: action={node.action}")
+    elif isinstance(node, DecisionNode):
+        if feature_names and node.attribute_index < len(feature_names):
+            feature = feature_names[node.attribute_index]
+        else:
+            feature = f"state[{node.attribute_index}]"
+        print(f"{indent}Decision: {feature} <= {node.threshold}")
+        print_tree(node.left_child, depth + 1, feature_names)
+        print_tree(node.right_child, depth + 1, feature_names)
