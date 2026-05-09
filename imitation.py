@@ -2,11 +2,16 @@ from gymnasium import Env
 import gymnasium as gym
 import torch as T
 from decision_tree_model import DecisionTreeModel
-from evaluation import evaluate_tree_performance
-import numpy as np
+
+
 
 def run_imitation(
-    expert_model: T.nn.Module, env: Env, n_episodes: int
+    expert_model: T.nn.Module,
+    env: Env,
+    n_episodes: int,
+    max_depth: int = 10,
+    *args,
+    **kwargs,
 ) -> DecisionTreeModel:
     """
     Train a decision tree to imitate an expert model using Imitation Learning.
@@ -30,75 +35,70 @@ def run_imitation(
     DecisionTreeModel
         The trained decision tree that imitates the expert.
     """
-    
+
+    print(f"Starting imitation learning for {n_episodes} episodes...")
     states = []
     actions = []
-    
+
     is_discrete = isinstance(env.action_space, gym.spaces.Discrete)
     input_dim = env.observation_space.shape[0]
     output_classes = env.action_space.n if is_discrete else None
-    output_range = (env.action_space.low[0], env.action_space.high[0]) if not is_discrete else None
-    
+    output_range = (
+        (env.action_space.low[0], env.action_space.high[0]) if not is_discrete else None
+    )
+
     current_tree = None
-    
+
     for episode in range(n_episodes):
+        print(f"Episode {episode+1}/{n_episodes} - rolling out current policy...")
         obs, _ = env.reset()
         terminated = False
         truncated = False
-        
+
         # 1. Roll out the current student tree (or expert on the first episode) to collect visited states
         while not (terminated or truncated):
             states.append(obs)
-            
+
             # 2. Query the expert model to label those states with expert actions
             expert_action, _ = expert_model.predict(obs)
             if is_discrete:
                 actions.append(int(expert_action))
             else:
                 actions.append(float(expert_action))
-            
+
             # Agent steps in environment
             if current_tree is None:
                 action_to_take = expert_action
             else:
                 action_to_take = current_tree.predict(obs)
-                
+
             obs, reward, terminated, truncated, _ = env.step(action_to_take)
-            
-        # 3 & 4. Aggregate dataset and fit tree with an elbow-method regularization sweep
-        best_tree = None
-        best_perf = -float('inf')
-        
-        # Sweep max_depth to find the smallest tree that maintains performance
-        for depth in range(1, 15):
-            candidate_tree = DecisionTreeModel.fit(
-                states=states,
-                actions=actions,
-                is_discrete=is_discrete,
-                input_dim=input_dim,
-                max_depth=depth,
-                output_classes=output_classes,
-                output_range=output_range
-            )
-            
-            # Evaluate performance
-            rewards = evaluate_tree_performance(candidate_tree, env, n_episodes=3)
-            perf = np.mean(rewards)
-            
-            # Accept if performance improves; break if it negatively degrades (elbow hit)
-            if best_tree is None or perf >= best_perf:
-                best_tree = candidate_tree
-                best_perf = perf
-            elif perf < best_perf - 5.0: 
-                break 
-                
+
+        best_tree = DecisionTreeModel.fit(
+            states=states,
+            actions=actions,
+            is_discrete=is_discrete,
+            input_dim=input_dim,
+            max_depth=max_depth,
+            output_classes=output_classes,
+            output_range=output_range,
+        )
+
         current_tree = best_tree
-        
+    print(
+        f"Selected tree with depth up to {getattr(best_tree, 'max_depth', 'unknown')}"
+    )
     return current_tree
 
 
 def initialize_population_imitation(
-    pop_size: int, env: Env, expert_model: T.nn.Module, n_episodes: int
+    pop_size: int,
+    env: Env,
+    expert_model: T.nn.Module,
+    n_episodes: int,
+    max_depth: int = 10,
+    *args,
+    **kwargs,
 ) -> list[DecisionTreeModel]:
     """
     Initialize the population using Imitation Learning.
@@ -122,25 +122,13 @@ def initialize_population_imitation(
     list[DecisionTreeModel]
         A list of initialized decision trees trained via imitation learning.
     """
-    expert_model  = expert_model if expert_model else DummyExpert(env.action_space)
     population = []
-    for _ in range(pop_size):
-        tree = run_imitation(expert_model, env, n_episodes)
+    print(f"Initializing population of size {pop_size} via imitation...")
+    for i in range(pop_size):
+        print(f"Training individual {i+1}/{pop_size}...")
+        tree = run_imitation(
+            expert_model, env, n_episodes, max_depth=max_depth, *args, **kwargs
+        )
         population.append(tree)
+    print("Population initialization complete.")
     return population
-
-
-import torch.nn as nn
-class DummyExpert(nn.Module):
-    """
-    A fake expert model to test the DAgger loop without 
-    needing a real trained SB3 model.
-    """
-    def __init__(self, action_space):
-        super().__init__()
-        self.action_space = action_space
-
-    def predict(self, obs):
-        # Simply return a random action valid for the environment
-        action = self.action_space.sample()
-        return action, None
