@@ -4,7 +4,6 @@ import torch as T
 from decision_tree_model import DecisionTreeModel
 
 
-
 def run_imitation(
     expert_model: T.nn.Module,
     env: Env,
@@ -85,9 +84,7 @@ def run_imitation(
         )
 
         current_tree = best_tree
-    print(
-        f"Selected tree with depth up to {getattr(best_tree, 'max_depth', 'unknown')}"
-    )
+    print(f"Selected tree with depth up to {max_depth}")
     return current_tree
 
 
