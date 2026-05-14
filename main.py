@@ -85,7 +85,7 @@ def parse_arguments():
     parser.add_argument(
         "--n_episodes",
         type=int,
-        default=100,
+        default=10,
         help="Number of episodes to run when calculating tree fitness",
     )
     parser.add_argument(
