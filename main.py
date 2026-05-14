@@ -115,6 +115,12 @@ def parse_arguments():
         default=8,
         help="Maximum depth of the decision trees",
     )
+    parser.add_argument(
+        "--num_islands",
+        type=int,
+        default=4,
+        help="Number of islands to use in the Island Model evolutionary algorithm",
+    )
 
     return parser.parse_args()
 
@@ -216,7 +222,12 @@ def main():
     print("=== MENS-DT-RL Initialization ===")
     print(f"Environment: {args.env}")
     print(f"Init Mode: {args.init_mode}")
-    print(f"Population Size: {args.pop_size} | Max Generations: {args.max_generations}")
+    print(
+        f"Population Size: {args.pop_size} | Max Generations: {args.max_generations} | Number of Episodes: {args.n_episodes}"
+    )
+    print(f"Number of Islands: {args.num_islands}")
+    print(f"DAgger Iterations (if IL): {args.dagger_iterations}")
+    print(f"Alpha (Size Penalty): {args.alpha}")
 
     # 2. Set random seeds for reproducibility
     random.seed(args.seed)
@@ -295,6 +306,7 @@ def main():
         dagger_iterations=args.dagger_iterations,
         save_callback=save_callback,
         max_depth=args.max_depth,
+        num_islands=args.num_islands,
     )
 
     # 5. Export and evaluation
