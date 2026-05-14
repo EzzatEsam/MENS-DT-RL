@@ -70,7 +70,7 @@ def run_imitation(
         best_perf = -float('inf')
         
         # Sweep max_depth to find the smallest tree that maintains performance
-        for depth in range(1, 15):
+        for depth in range(1, 5):
             candidate_tree = DecisionTreeModel.fit(
                 states=states,
                 actions=actions,

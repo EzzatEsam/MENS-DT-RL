@@ -74,7 +74,7 @@ def parse_arguments():
     parser.add_argument(
         "--max_generations",
         type=int,
-        default=100,
+        default=40,
         help="Stopping criterion: Maximum number of generations to evolve",
     )
 

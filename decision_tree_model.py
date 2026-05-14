@@ -515,7 +515,12 @@ def initialize_random_population(
         The initialized population of decision trees.
     """
     is_discrete = isinstance(env.action_space, gym.spaces.Discrete)
-    input_dim = env.observation_space.shape[0]
+    obs_shape = getattr(env.observation_space, 'shape', None)
+    if obs_shape is not None and len(obs_shape) > 0:
+        input_dim = obs_shape[0]
+    else:
+        # Fallback for Discrete spaces like FrozenLake or Blackjack
+        input_dim = 1
     output_classes = env.action_space.n if is_discrete else None
     # output_range = env.action_space.low[0], (
     #     env.action_space.high[0] if not is_discrete else None
