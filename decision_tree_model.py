@@ -1,17 +1,11 @@
 from copy import deepcopy
 import random
-
-from gymnasium import Env
-import gymnasium as gym
 import numpy as np
 from numpy.typing import ArrayLike
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
-from sklearn.tree._tree import Tree
-
 from typing import Literal, TypedDict
-
 from tree_node import DecisionNode, LeafNode, TreeNode
-
+from gymnasium import Env
 MutationType = Literal[
     "Replace_with_child",
     "Truncate",
