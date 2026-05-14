@@ -109,6 +109,12 @@ def parse_arguments():
         default="tree",
         help="Type of model to test: 'tree' (pickled DecisionTreeModel) or 'expert' (deep model)",
     )
+    parser.add_argument(
+        "--max_depth",
+        type=int,
+        default=8,
+        help="Maximum depth of the decision trees",
+    )
 
     return parser.parse_args()
 
@@ -235,7 +241,7 @@ def main():
 
             from evaluation import simulate_episode
 
-            print(f"Running 5 test episodes...")
+            print("Running 5 test episodes...")
             for i in range(5):
                 reward = simulate_episode(model, env, render=True)
                 print(f" Episode {i+1}: Reward = {reward}")
@@ -246,7 +252,7 @@ def main():
             model = load_expert_from_path(args.model_path, env)
             print(f"Loaded Expert Model from {args.model_path}")
 
-            print(f"Running 5 test episodes...")
+            print("Running 5 test episodes...")
             for i in range(5):
                 obs, _ = env.reset()
                 total_reward = 0.0
@@ -288,6 +294,7 @@ def main():
         expert_path=args.expert_path,
         dagger_iterations=args.dagger_iterations,
         save_callback=save_callback,
+        max_depth=args.max_depth,
     )
 
     # 5. Export and evaluation
