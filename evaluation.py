@@ -42,8 +42,29 @@ def simulate_episode(
             env.render()
 
         obs_norm = normalizer.normalize(obs)
+        if isinstance(obs_norm, (int, float, np.integer, np.floating)):
+            obs_norm = np.array([obs_norm])
+            
         action = tree.predict(obs_norm)
-        obs, reward, terminated, truncated, _ = env.step(action)
+
+        # Ask the environment what type of action it expects based on its shape
+        if getattr(env.action_space, 'shape', None) and len(env.action_space.shape) > 0:
+            # Environment expects an array (e.g., Box space like Pendulum)
+            if isinstance(action, (int, float, np.integer, np.floating)):
+                formatted_action = np.array([action], dtype=np.float32)
+            else:
+                formatted_action = np.array(action, dtype=np.float32)
+        else:
+            # Environment expects a single integer (e.g., Discrete space like FrozenLake)
+            if isinstance(action, np.ndarray):
+                formatted_action = int(action.item())
+            else:
+                formatted_action = int(action)
+
+        # Pass the correctly formatted action to the environment
+        obs, reward, terminated, truncated, _ = env.step(formatted_action)
+    
+        
         total_reward += reward
 
     return total_reward

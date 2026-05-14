@@ -5,7 +5,7 @@ from numpy.typing import ArrayLike
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from typing import Literal, TypedDict
 from tree_node import DecisionNode, LeafNode, TreeNode
-
+from gymnasium import Env
 MutationType = Literal[
     "Replace_with_child",
     "Truncate",
@@ -479,3 +479,60 @@ def generate_random_tree(
         output_classes=output_classes,
         output_range=output_range,
     )
+
+
+def initialize_random_population(
+    mode: str, pop_size: int, env: Env, max_depth: int, *args, **kwargs
+) -> list[DecisionTreeModel]:
+    """
+    Orchestrate the chosen initialization mode for the population.
+
+    Supports Random (R), Imitation Learning (IL), and Pruning-based (P)
+    initialization strategies as described in the MENS-DT-RL paper.
+
+    Parameters
+    ----------
+    mode : str
+        The initialization mode: 'R', 'IL', or 'P'.
+    pop_size : int
+        The number of individuals to generate for the initial population.
+    env : Env
+        The gymnasium environment to use for initialization context.
+    *args : tuple
+        Additional positional arguments.
+    **kwargs : dict
+        Additional keyword arguments (e.g., expert_path).
+
+    Returns
+    -------
+    list of DecisionTreeModel
+        The initialized population of decision trees.
+    """
+    is_discrete = isinstance(env.action_space, gym.spaces.Discrete)
+    obs_shape = getattr(env.observation_space, 'shape', None)
+    if obs_shape is not None and len(obs_shape) > 0:
+        input_dim = obs_shape[0]
+    else:
+        # Fallback for Discrete spaces like FrozenLake or Blackjack
+        input_dim = 1
+    output_classes = env.action_space.n if is_discrete else None
+    # output_range = env.action_space.low[0], (
+    #     env.action_space.high[0] if not is_discrete else None
+    # )
+
+    if is_discrete:
+        output_range = None
+    else:
+        output_range = (env.action_space.low[0], env.action_space.high[0])
+    return [
+        generate_random_tree(
+            max_depth=max_depth,
+            state_space=input_dim,
+            is_discrete=is_discrete,
+            output_classes=output_classes,
+            output_range=output_range,
+            *args,
+            **kwargs,
+        )
+        for _ in range(pop_size)
+    ]

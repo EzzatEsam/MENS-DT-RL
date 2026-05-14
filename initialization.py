@@ -36,7 +36,11 @@ def initialize_random_population(
     match mode:
         case "R":
             is_discrete = isinstance(env.action_space, gym.spaces.Discrete)
-            input_dim = env.observation_space.shape[0]
+            if len(env.observation_space.shape) > 0:
+                input_dim = env.observation_space.shape[0]
+            else:
+                # If shape is (), it's a Discrete space, which means it provides 1 integer
+                input_dim = 1
             output_classes = env.action_space.n if is_discrete else None
             # output_range = env.action_space.low[0], (
             #     env.action_space.high[0] if not is_discrete else None
