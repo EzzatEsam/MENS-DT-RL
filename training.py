@@ -89,7 +89,8 @@ def train_mens_dt_rl(
 
     # 2. Evolutionary Loop
     for generation in range(max_generations):
-        
+        mutated_alpha = alpha * (max_generations - generation) / max_generations
+
         # Evolve each island separately
         for island_idx in range(num_islands):
             population = islands[island_idx]
@@ -124,7 +125,6 @@ def train_mens_dt_rl(
             # Combine old and new individuals for evaluation
             combined_candidates = population + new_population
             for tree in combined_candidates:
-
                 current_fit = tree.get_fitness()
                 # Safely force recalculation if fitness is None or NaN
                 if current_fit is not None and not math.isnan(float(current_fit)):
@@ -141,13 +141,13 @@ def train_mens_dt_rl(
                     )
 
                 tree_size = tree.get_size()
-                fitness_score = calculate_fitness(rewards, tree_size, alpha)
+                fitness_score = calculate_fitness(rewards, tree_size, mutated_alpha)
                 tree.set_fitness(fitness_score)
 
             # 5. Selection
             # Sort by fitness (highest first) and keep top individuals
             combined_candidates.sort(key=lambda x: x.get_fitness(), reverse=True)
-            islands[island_idx] = combined_candidates[:island_sizes[island_idx]]
+            islands[island_idx] = combined_candidates[: island_sizes[island_idx]]
 
         # Migration Event
         if (generation + 1) % migration_interval == 0 and num_islands > 1:
@@ -157,14 +157,14 @@ def train_mens_dt_rl(
                 # Pop the best tree (index 0 since the list is sorted by fitness)
                 best_tree = islands[island_idx].pop(0)
                 best_trees_to_migrate.append(best_tree)
-            
+
             # Send the best tree from each island to a random different island
             sources = list(range(num_islands))
             targets = list(range(num_islands))
             # Create a derangement so no tree goes back to its original island
             while any(s == t for s, t in zip(sources, targets)):
                 random.shuffle(targets)
-            
+
             for source_idx in range(num_islands):
                 target_island = targets[source_idx]
                 incoming_tree = best_trees_to_migrate[source_idx]
@@ -187,10 +187,13 @@ def train_mens_dt_rl(
         )
 
         if save_callback is not None:
-            global_best_tree = max((island[0] for island in islands), key=lambda x: x.get_fitness())
+            global_best_tree = max(
+                (island[0] for island in islands), key=lambda x: x.get_fitness()
+            )
             save_callback(global_best_tree, best_scores, avg_scores)
 
     # 6. Return best solution and history
-    global_best_tree = max((island[0] for island in islands), key=lambda x: x.get_fitness())
+    global_best_tree = max(
+        (island[0] for island in islands), key=lambda x: x.get_fitness()
+    )
     return global_best_tree, best_scores, avg_scores
-
